@@ -1,4 +1,4 @@
-#Datos climáticos de NOAA (GHCN)
+#Datos climÃ¡ticos de NOAA (GHCN)
 #The Global Historical Climatology Network (GHCN)
 #GHCN-Daily contains records from over 100,000 stations in 180 countries and territories. 
 #NCEI provides numerous daily variables, including maximum and minimum temperature, 
@@ -12,7 +12,7 @@
 #TMIN = Minimum temperature (tenths of degrees C)
 
 #ftp://ftp.ncdc.noaa.gov/pub/data/ghcn/daily
-# "ghcnd-all.tar.gz" zipped file que contiene las mediciones diarias, un archivo .dly por cada estación.
+# "ghcnd-all.tar.gz" zipped file que contiene las mediciones diarias, un archivo .dly por cada estaciÃ³n.
 
 rm(list = ls()) 
 setwd("C:/Users/Magdalena Cornejo/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather")
@@ -22,7 +22,7 @@ setwd("C:/Users/Magdalena Cornejo/Dropbox/Paper Climate Change & Commodity Price
 library(rnoaa)
 library(dplyr)
 
-#Preparando la información:
+#Preparando la informaciÃ³n:
 noaa_dir <- "C:/Users/Magdalena Cornejo/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather/ghcnd_hcn/"
 noaaout <- "C:/Users/Magdalena Cornejo/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather/"
 
@@ -34,10 +34,10 @@ stns <- read.fortran(paste0(noaa_dir,"ghcnd-stations.txt"),
                      comment.char="")
 hdrs <- c("ID", "LAT", "LON", "ELEV", "ST", "NAME","GSN", "HCN", "WMOID")
 names(stns) <- hdrs
-write.csv(stns,stnscsv) #son 115082 estaciones meteorológicas
+write.csv(stns,stnscsv) #son 115082 estaciones meteorolÃ³gicas
 head(stns)
 
-inventorycsv <- paste0(noaaout,"inventory.csv") #inventario de las estaciones. Reporta LAT/LON y año de inicio y fin del monitoreo
+inventorycsv <- paste0(noaaout,"inventory.csv") #inventario de las estaciones. Reporta LAT/LON y aÃ±o de inicio y fin del monitoreo
 invcols <- c( "A11", "X1", "F8", "X1", "F9", "X1","A4",
               "X1","I4", "X1", "I4" )
 inv <- read.fortran(paste0(noaa_dir,"ghcnd-inventory.txt"),
@@ -73,10 +73,10 @@ unique(us_stns$ST)
 
 midwest_stns <-  filter(us_stns, us_stns$ST=="IA" | us_stns$ST=="IL" | us_stns$ST=="IN" | us_stns$ST=="KS" | us_stns$ST=="MI" | us_stns$ST=="MN" | us_stns$ST=="MO" | us_stns$ST=="ND" | us_stns$ST=="NE" | us_stns$ST=="OH" | us_stns$ST=="SD" | us_stns$ST=="WI")
 data3 <- merge(midwest_stns, data2, all.y=TRUE)
-length(data3$ID) #son 2565 estaciones meteorológicas iniciales
+length(data3$ID) #son 2565 estaciones meteorolÃ³gicas iniciales
 
 
-#Ahora leo la información para esas estaciones a partir de los archivos dly:
+#Ahora leo la informaciÃ³n para esas estaciones a partir de los archivos dly:
 numFiles <- length(data3$ID)
 dirname <- paste0(noaa_dir,"ghcnd_all/")
 for (i in 1:numFiles) {
@@ -97,12 +97,58 @@ for (i in 1:numFiles) {
 
 
 #EZEQUIEL:
-#trabajar directamente con los archivos .csv que están en la carpeta "Datos/GHCN daily weather"
-#a cada archivo/estacion asociarle los datos de LAT/LON/ST/NAME que están en "GHCN daily weatherstations"
+#trabajar directamente con los archivos .csv que estÃ¡n en la carpeta "Datos/GHCN daily weather"
+#a cada archivo/estacion asociarle los datos de LAT/LON/ST/NAME que estÃ¡n en "GHCN daily weatherstations"
 #acomodar los datos para que sean series temporales ya que cada columna de "VALUE" es el valor diario de PRCP de 1 a 31
-#filtrar y analizar cuántas estaciones meteorológicas logran cubrir al menos el 90% del período
-#realizar gráfico de lluvia acumulada y comparar con el archivo "Rain data NM"
+#filtrar y analizar cuÃ¡ntas estaciones meteorolÃ³gicas logran cubrir al menos el 90% del perÃ­odo
+#realizar grÃ¡fico de lluvia acumulada y comparar con el archivo "Rain data NM"
 
-#luego, replicar todo para TMAX (temperatura máxima) --> Esto solo una vez de que estemos convencidos de todo el procedimiento para PRCP
+#luego, replicar todo para TMAX (temperatura mÃ¡xima) --> Esto solo una vez de que estemos convencidos de todo el procedimiento para PRCP
 
 
+library(tidyverse)
+
+setwd("C:/Users/Horacio Merovich/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather")
+
+initial_year <- 1970
+final_year <- 2019
+
+year_range <- final_year-initial_year
+
+lista_archivos <- as.list(list.files(path="C:/Users/Horacio Merovich/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather", pattern="*.csv", full.names=FALSE, recursive=FALSE))
+
+lista_archivos <- lista_archivos[lista_archivos != "GHCN daily weatherinventory.csv"] #Borro de la lista estos dos archivos que estan en el directorio pero no son datos de las weatherstations
+lista_archivos <- lista_archivos[lista_archivos != "GHCN daily weatherstations.csv"]
+
+
+observaciones_por_weather_station <- data.frame(ws_code = character(2565),
+                                                nro_observaciones = integer(2565))
+#Itero una vez por todos los archivos y registro cuantas observaciones tiene cada uno
+for (i in 1:length(lista_archivos)){
+  datos_estacion_meteorologica_iteracion <- read_csv(as.character(lista_archivos[i]))
+  observaciones_por_weather_station[i,1] <- datos_estacion_meteorologica_iteracion[1,2]
+  observaciones_por_weather_station[i,2] <- nrow(datos_estacion_meteorologica_iteracion)
+}
+
+posibles_cutoffs <- seq(0.75, 0.95, 0.01)
+
+weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoffs)),
+                                                nro_weather_stations = length(posibles_cutoffs))
+
+
+for(j in 1:length(posibles_cutoffs)){
+  contador <- 0
+  for (i in 1:length(lista_archivos)){
+    if(observaciones_por_weather_station[i,2] > year_range*12*posibles_cutoffs[j]){
+      contador <- contador + 1
+    }
+  }
+  weather_station_por_cutoff[j,1] <- posibles_cutoffs[j]
+  weather_station_por_cutoff[j,2] <- contador
+}
+
+setwd("C:/Users/Horacio Merovich/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos")
+getwd()
+
+write_csv(weather_station_por_cutoff, "C:/Users/Horacio Merovich/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/weather_station_por_cutoff.csv")
+write_csv(observaciones_por_weather_station, "C:/Users/Horacio Merovich/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/observaciones_por_weather_station.csv")
