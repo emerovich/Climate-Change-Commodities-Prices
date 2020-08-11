@@ -1,6 +1,7 @@
 #install.packages("plotly")
 library(tidyverse)
 library(plotly)
+library(lubridate)
 
 setwd("C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather")
 
@@ -10,8 +11,8 @@ observaciones_por_weather_station <- read_csv("observaciones_por_weather_station
 
 initial_year <- 1970
 final_year <- 2019
-cutoff <- 0.95
-year_range <- final_year-initial_year
+cutoff <- 0.91
+year_range <- length(initial_year:final_year)
 
 
 observaciones_por_weather_station_filtered <- filter(observaciones_por_weather_station, nro_observaciones >= year_range*12*cutoff)
@@ -24,18 +25,18 @@ fechas <- read_csv("C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Pric
 
 #genero bases por estado
 
-stations_IA <- observaciones_por_weather_station_filtered %>% filter(ST=="IA") %>% select(ws_code, ST)
-stations_IL <- observaciones_por_weather_station_filtered %>% filter(ST=="IL") %>% select(ws_code, ST)
-stations_IN <- observaciones_por_weather_station_filtered %>% filter(ST=="IN") %>% select(ws_code, ST)
-stations_KS <- observaciones_por_weather_station_filtered %>% filter(ST=="KS") %>% select(ws_code, ST)
-stations_MI <- observaciones_por_weather_station_filtered %>% filter(ST=="MI") %>% select(ws_code, ST)
-stations_MN <- observaciones_por_weather_station_filtered %>% filter(ST=="MN") %>% select(ws_code, ST)
-stations_MO <- observaciones_por_weather_station_filtered %>% filter(ST=="MO") %>% select(ws_code, ST)
-stations_ND <- observaciones_por_weather_station_filtered %>% filter(ST=="ND") %>% select(ws_code, ST)
-stations_NE <- observaciones_por_weather_station_filtered %>% filter(ST=="NE") %>% select(ws_code, ST)
-stations_OH <- observaciones_por_weather_station_filtered %>% filter(ST=="OH") %>% select(ws_code, ST)
-stations_SD <- observaciones_por_weather_station_filtered %>% filter(ST=="SD") %>% select(ws_code, ST)
-stations_WI <- observaciones_por_weather_station_filtered %>% filter(ST=="WI") %>% select(ws_code, ST)
+stations_IA <- observaciones_por_weather_station_filtered %>% filter(ST=="IA" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_IL <- observaciones_por_weather_station_filtered %>% filter(ST=="IL"& ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_IN <- observaciones_por_weather_station_filtered %>% filter(ST=="IN" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_KS <- observaciones_por_weather_station_filtered %>% filter(ST=="KS" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_MI <- observaciones_por_weather_station_filtered %>% filter(ST=="MI" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_MN <- observaciones_por_weather_station_filtered %>% filter(ST=="MN" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_MO <- observaciones_por_weather_station_filtered %>% filter(ST=="MO" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_ND <- observaciones_por_weather_station_filtered %>% filter(ST=="ND" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_NE <- observaciones_por_weather_station_filtered %>% filter(ST=="NE" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_OH <- observaciones_por_weather_station_filtered %>% filter(ST=="OH" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_SD <- observaciones_por_weather_station_filtered %>% filter(ST=="SD" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
+stations_WI <- observaciones_por_weather_station_filtered %>% filter(ST=="WI" & ws_code %in% colnames(fechas)) %>% select(ws_code, ST)
 
 precipitaciones_IA <- fechas %>% select(anios, meses, dias,stations_IA$ws_code) 
 precipitaciones_IL <- fechas %>% select(anios, meses, dias,stations_IL$ws_code)
@@ -96,13 +97,19 @@ for(i in seq_along(1:nrow(precipitaciones_por_estado))){
 
 #Armo el grafico
 
-precipitaciones_por_estado$fecha <- paste0(precipitaciones_por_estado$anios,"-",precipitaciones_por_estado$meses,"-",precipitaciones_por_estado$dias)
+precipitaciones_por_estado$fecha <- ymd(paste0(precipitaciones_por_estado$anios,"-",precipitaciones_por_estado$meses,"-",precipitaciones_por_estado$dias))
 
 fig <- plot_ly(precipitaciones_por_estado, x = ~fecha, y = ~precipitacion_acumulada_verano, name = 'Precipitacion acumulada durante el verano', type = 'scatter', mode = 'lines') 
 fig <- fig %>% add_trace(y = ~trend_acumulada, name = 'Diferencia entre Precipitacion y Tendencia', mode = 'lines')
 fig %>% layout(title = "Precipitaciones Acumuladas en los meses de verano 1970-2019",
                xaxis = list(title = "Fecha"),
                yaxis = list (title = "Precipitaciones(mm)"))
+
+precipitaciones_por_estado <- precipitaciones_por_estado[,4:ncol(precipitaciones_por_estado)]
+precipitaciones_por_estado <- precipitaciones_por_estado[,c(17,1:16)]
+
+write_csv(precipitaciones_por_estado, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/Outputs/precipitacion_acumulada_verano_1970_2019.csv")
+
 
 #ANALISIS DE MISSING DATA
 
@@ -120,16 +127,15 @@ na_SD <- as.data.frame(sapply(precipitaciones_SD, function(x) sum(is.na(x))))
 na_WI <- as.data.frame(sapply(precipitaciones_WI, function(x) sum(is.na(x))))
 
 setwd("C:/Users/ezequ/Documents")
-write_csv(na_IA, "C:/Users/ezequ/Documents")
-write_csv(na_IL, "C:/Users/ezequ/Documents")
-write_csv(na_IN, "C:/Users/ezequ/Documents")
-write_csv(na_KS, "C:/Users/ezequ/Documents")
-write_csv(na_MI, "C:/Users/ezequ/Documents")
-write_csv(na_MN, "C:/Users/ezequ/Documents")
-write_csv(na_MO, "C:/Users/ezequ/Documents")
-write_csv(na_ND, "C:/Users/ezequ/Documents")
-write_csv(na_NE, "C:/Users/ezequ/Documents")
-write_csv(na_OH, "C:/Users/ezequ/Documents")
-write_csv(na_SD, "C:/Users/ezequ/Documents")
-write_csv(na_WI, "C:/Users/ezequ/Documents")
-50*12*30 
+write.csv(na_IA, "C:/Users/ezequ/Documents/na_IA.csv")
+write.csv(na_IL, "C:/Users/ezequ/Documents/na_IL.csv")
+write.csv(na_IN, "C:/Users/ezequ/Documents/na_IN.csv")
+write.csv(na_KS, "C:/Users/ezequ/Documents/na_KS.csv")
+write.csv(na_MI, "C:/Users/ezequ/Documents/na_MI.csv")
+write.csv(na_MN, "C:/Users/ezequ/Documents/na_MN.csv")
+write.csv(na_MO, "C:/Users/ezequ/Documents/na_MO.csv")
+write.csv(na_ND, "C:/Users/ezequ/Documents/na_ND.csv")
+write.csv(na_NE, "C:/Users/ezequ/Documents/na_NE.csv")
+write.csv(na_OH, "C:/Users/ezequ/Documents/na_OH.csv")
+write.csv(na_SD, "C:/Users/ezequ/Documents/na_SD.csv")
+write.csv(na_WI, "C:/Users/ezequ/Documents/na_WI.csv")
