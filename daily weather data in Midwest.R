@@ -117,9 +117,10 @@ setwd("C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Da
   
 initial_year <- 1970
 final_year <- 2019
-cutoff <- 0.91
+cutoff <- 0.99
   
 year_range <- final_year-initial_year
+#year_range <- length(initial_year:final_year)
 
 lista_archivos <- as.list(list.files(path="C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather", pattern="*.csv", full.names=FALSE, recursive=FALSE))
 
@@ -143,7 +144,7 @@ for (i in 1:length(lista_archivos)){
   
 #Me fijo cuantas estaciones me quedan para distintos posibles valores de cutoff
   
-posibles_cutoffs <- seq(0.75, 0.95, 0.01)
+posibles_cutoffs <- seq(0.9, 0.99, 0.01)
   
 weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoffs)),
                                                 nro_weather_stations = length(posibles_cutoffs))
@@ -152,7 +153,6 @@ weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoff
 #Par esto leo los csv de las weather station de interes para armar la base de datos de precipitaciones
 #filtro observaciones por weather station para tener los candidatos que pueden llegar a tener un cierto porcentaje de observaciones en el periodo especificado para acotar el espacio de busqueda de csv que tengo que levantar
 
-observaciones_por_weather_station_filtered <- filter(observaciones_por_weather_station, nro_observaciones >= year_range*12*cutoff)
 
 anios <- as.numeric(sort(rep(seq(1970,2019,1),12*31)))
 meses <- c(rep(1,31),rep(2,31),rep(3,31),rep(4,31),rep(5,31),rep(6,31),rep(7,31),rep(8,31),
@@ -166,7 +166,7 @@ colnames(fechas) <- c("anios", "meses", "dias")
   
   
 for(i in 1:nrow(observaciones_por_weather_station)){ 
-  weather_station_data <- read_csv(paste0(as.character(observaciones_por_weather_station_filtered[i,1]),".csv"))
+  weather_station_data <- read_csv(paste0(as.character(observaciones_por_weather_station[i,1]),".csv"))
   weather_station_data <- melt(weather_station_data, id.vars = c("ID", "year", "month", "element")) #esto lo convierte en formato serie de tiempo
   weather_station_data <- arrange(weather_station_data, year, month)
   weather_station_data$variable <- str_sub(weather_station_data$variable, 4, -1)
@@ -190,7 +190,7 @@ for(i in 1970:2019){
   }
 }
 
-posibles_cutoffs <- seq(0.75, 0.95, 0.01)
+posibles_cutoffs <- seq(0.90, 0.99, 0.01)
 weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoffs)),
                                          nro_weather_stations = length(posibles_cutoffs))
 
@@ -217,12 +217,11 @@ umbral <- numeric(12)
 distribucion_estados_por_cutoff <- as.data.frame(cbind(estados,umbral,
                                                        umbral,umbral,umbral,
                                                        umbral,umbral,umbral
-                                                       ,umbral,umbral,umbral
-                                                       ,umbral,umbral,umbral
-                                                       ,umbral,umbral,umbral,
-                                                       umbral,umbral,umbral,
-                                                       umbral,umbral))
+                                                       ,umbral,umbral,umbral))
+
 colnames(distribucion_estados_por_cutoff) <- c("estados",as.character(posibles_cutoffs))
+
+distribucion_estados_por_cutoff <- distribucion_estados_por_cutoff[,1:(1+length(posibles_cutoffs))]
 
 for(k in seq_along(posibles_cutoffs)){
   estaciones <- colnames(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])][,4:ncol(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])])]) #
@@ -238,71 +237,93 @@ write_csv(distribucion_estados_por_cutoff, "C:/Users/ezequ/Dropbox/Paper Climate
 #y con ese valor de cutoff hay 1013 weather stations en la muestra
 
 
+fecha <- paste0(fechas[,1],"-", fechas[,2],"-",fechas[,3])
+umbral <- numeric(nrow(fechas))
+indice_por_cutoff <- as.data.frame(cbind(fecha,umbral,
+                                                       umbral,umbral,umbral,
+                                                       umbral,umbral,umbral
+                                                       ,umbral,umbral,umbral))
+colnames(indice_por_cutoff) <- c("fecha",as.character(posibles_cutoffs))
+indice_por_cutoff[,1] <- ymd(indice_por_cutoff[,1])
+
+indice_por_cutoff <- indice_por_cutoff[,1:(1+length(posibles_cutoffs))]
+
+for(k in seq_along(posibles_cutoffs)){
+  matriz_frecuencia <- fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])]
+  #genero bases por estado
+  estaciones <- colnames(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])][,4:ncol(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])])]) #
+  estaciones_df <- as.data.frame(estaciones)
+  observaciones_por_weather_station_filtered <- left_join(estaciones_df, ghcn_daily_weather_stations, by=c("estaciones"="ID"))
+  
+  stations_IA <- observaciones_por_weather_station_filtered %>% filter(ST=="IA") %>% select(estaciones, ST)
+  stations_IL <- observaciones_por_weather_station_filtered %>% filter(ST=="IL") %>% select(estaciones, ST)
+  stations_IN <- observaciones_por_weather_station_filtered %>% filter(ST=="IN") %>% select(estaciones, ST)
+  stations_KS <- observaciones_por_weather_station_filtered %>% filter(ST=="KS") %>% select(estaciones, ST)
+  stations_MI <- observaciones_por_weather_station_filtered %>% filter(ST=="MI") %>% select(estaciones, ST)
+  stations_MN <- observaciones_por_weather_station_filtered %>% filter(ST=="MN") %>% select(estaciones, ST)
+  stations_MO <- observaciones_por_weather_station_filtered %>% filter(ST=="MO") %>% select(estaciones, ST)
+  stations_ND <- observaciones_por_weather_station_filtered %>% filter(ST=="ND") %>% select(estaciones, ST)
+  stations_NE <- observaciones_por_weather_station_filtered %>% filter(ST=="NE") %>% select(estaciones, ST)
+  stations_OH <- observaciones_por_weather_station_filtered %>% filter(ST=="OH") %>% select(estaciones, ST)
+  stations_SD <- observaciones_por_weather_station_filtered %>% filter(ST=="SD") %>% select(estaciones, ST)
+  stations_WI <- observaciones_por_weather_station_filtered %>% filter(ST=="WI") %>% select(estaciones, ST)
+  
+  precipitaciones_IA <- matriz_frecuencia %>% select(anios, meses, dias,stations_IA$estaciones) 
+  precipitaciones_IL <- matriz_frecuencia %>% select(anios, meses, dias,stations_IL$estaciones)
+  precipitaciones_IN <- matriz_frecuencia %>% select(anios, meses, dias,stations_IN$estaciones)
+  precipitaciones_KS <- matriz_frecuencia %>% select(anios, meses, dias,stations_KS$estaciones)
+  precipitaciones_MI <- matriz_frecuencia %>% select(anios, meses, dias,stations_MI$estaciones)
+  precipitaciones_MN <- matriz_frecuencia %>% select(anios, meses, dias,stations_MN$estaciones)
+  precipitaciones_MO <- matriz_frecuencia %>% select(anios, meses, dias,stations_MO$estaciones)
+  precipitaciones_ND <- matriz_frecuencia %>% select(anios, meses, dias,stations_ND$estaciones)
+  precipitaciones_NE <- matriz_frecuencia %>% select(anios, meses, dias,stations_NE$estaciones)
+  precipitaciones_OH <- matriz_frecuencia %>% select(anios, meses, dias,stations_OH$estaciones)
+  precipitaciones_SD <- matriz_frecuencia %>% select(anios, meses, dias,stations_SD$estaciones)
+  precipitaciones_WI <- matriz_frecuencia %>% select(anios, meses, dias,stations_WI$estaciones)
+  
+  #Agrego una columna que representa el promedio de lluvias de cada dia en las estaciones de un mismo estado
+  precipitaciones_IA$promedio <- rowMeans(precipitaciones_IA[startsWith(names(precipitaciones_IA),"US")], na.rm = TRUE)
+  precipitaciones_IL$promedio <- rowMeans(precipitaciones_IL[startsWith(names(precipitaciones_IL),"US")], na.rm = TRUE)
+  precipitaciones_IN$promedio <- rowMeans(precipitaciones_IN[startsWith(names(precipitaciones_IN),"US")], na.rm = TRUE)
+  precipitaciones_KS$promedio <- rowMeans(precipitaciones_KS[startsWith(names(precipitaciones_KS),"US")], na.rm = TRUE)
+  precipitaciones_MI$promedio <- rowMeans(precipitaciones_MI[startsWith(names(precipitaciones_MI),"US")], na.rm = TRUE)
+  precipitaciones_MN$promedio <- rowMeans(precipitaciones_MN[startsWith(names(precipitaciones_MN),"US")], na.rm = TRUE)
+  precipitaciones_MO$promedio <- rowMeans(precipitaciones_MO[startsWith(names(precipitaciones_MO),"US")], na.rm = TRUE)
+  precipitaciones_ND$promedio <- rowMeans(precipitaciones_ND[startsWith(names(precipitaciones_ND),"US")], na.rm = TRUE)
+  precipitaciones_NE$promedio <- rowMeans(precipitaciones_NE[startsWith(names(precipitaciones_NE),"US")], na.rm = TRUE)
+  precipitaciones_OH$promedio <- rowMeans(precipitaciones_OH[startsWith(names(precipitaciones_OH),"US")], na.rm = TRUE)
+  precipitaciones_SD$promedio <- rowMeans(precipitaciones_SD[startsWith(names(precipitaciones_SD),"US")], na.rm = TRUE)
+  precipitaciones_WI$promedio <- rowMeans(precipitaciones_WI[startsWith(names(precipitaciones_WI),"US")], na.rm = TRUE)
+  
+  
+  precipitaciones_por_estado <- as.data.frame(cbind(matriz_frecuencia$anios, matriz_frecuencia$meses, matriz_frecuencia$dias, precipitaciones_IA$promedio,
+                                                    precipitaciones_IL$promedio, precipitaciones_IN$promedio,                                                     
+                                                    precipitaciones_KS$promedio, precipitaciones_MI$promedio,
+                                                    precipitaciones_MN$promedio, precipitaciones_MO$promedio,                                                    
+                                                    precipitaciones_ND$promedio, precipitaciones_NE$promedio,
+                                                    precipitaciones_OH$promedio, precipitaciones_SD$promedio,
+                                                    precipitaciones_WI$promedio))
+  
+  colnames(precipitaciones_por_estado) <- c("anios", "meses", "dias", "IA", "IL", "IN", "KS", 
+                                            "MI", "MN", "MO", "ND", "NE", "OH", "SD", "WI")
+  precipitaciones_por_estado  
+  precipitaciones_por_estado[, c(4:15)] <- sapply(precipitaciones_por_estado[, c(4:15)], unlist)
+  precipitaciones_por_estado[, c(4:15)] <- sapply(precipitaciones_por_estado[, c(4:15)], as.numeric)
+  
+  precipitaciones_por_estado$indice <- numeric(nrow(precipitaciones_por_estado))
+  
+  for(i in 1:nrow(precipitaciones_por_estado)){
+    precipitaciones_por_estado[i,16] <- mean(as.numeric(precipitaciones_por_estado[i,4:15]))
+  } 
+  
+  indice_por_cutoff[,(k+1)] <- precipitaciones_por_estado[,16]
+}
+
+matriz_correlacion <- cor(indice_por_cutoff[,2:ncol(indice_por_cutoff)])
+#El indice elaborado con un cutoff del 0.90 y el indice elaborado con un cutoff del 0.99 tienen una correlacion del 0.98874
 
 
-matriz_frecuencia <- fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-cutoff)]
 
-write_csv(matriz_frecuencia, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/precipitaciones_por_estacion.csv")
-
-  
-#genero bases por estado
-estaciones <- colnames(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-cutoff)][,4:ncol(fechas[, colSums(is.na(fechas)) <= nrow(fechas)*(1-posibles_cutoffs[k])])]) #
-estaciones_df <- as.data.frame(estaciones)
-observaciones_por_weather_station_filtered <- left_join(estaciones_df, ghcn_daily_weather_stations, by=c("estaciones"="ID"))
-
-stations_IA <- observaciones_por_weather_station_filtered %>% filter(ST=="IA") %>% select(estaciones, ST)
-stations_IL <- observaciones_por_weather_station_filtered %>% filter(ST=="IL") %>% select(estaciones, ST)
-stations_IN <- observaciones_por_weather_station_filtered %>% filter(ST=="IN") %>% select(estaciones, ST)
-stations_KS <- observaciones_por_weather_station_filtered %>% filter(ST=="KS") %>% select(estaciones, ST)
-stations_MI <- observaciones_por_weather_station_filtered %>% filter(ST=="MI") %>% select(estaciones, ST)
-stations_MN <- observaciones_por_weather_station_filtered %>% filter(ST=="MN") %>% select(estaciones, ST)
-stations_MO <- observaciones_por_weather_station_filtered %>% filter(ST=="MO") %>% select(estaciones, ST)
-stations_ND <- observaciones_por_weather_station_filtered %>% filter(ST=="ND") %>% select(estaciones, ST)
-stations_NE <- observaciones_por_weather_station_filtered %>% filter(ST=="NE") %>% select(estaciones, ST)
-stations_OH <- observaciones_por_weather_station_filtered %>% filter(ST=="OH") %>% select(estaciones, ST)
-stations_SD <- observaciones_por_weather_station_filtered %>% filter(ST=="SD") %>% select(estaciones, ST)
-stations_WI <- observaciones_por_weather_station_filtered %>% filter(ST=="WI") %>% select(estaciones, ST)
-  
-precipitaciones_IA <- matriz_frecuencia %>% select(anios, meses, dias,stations_IA$estaciones) 
-precipitaciones_IL <- matriz_frecuencia %>% select(anios, meses, dias,stations_IL$estaciones)
-precipitaciones_IN <- matriz_frecuencia %>% select(anios, meses, dias,stations_IN$estaciones)
-precipitaciones_KS <- matriz_frecuencia %>% select(anios, meses, dias,stations_KS$estaciones)
-precipitaciones_MI <- matriz_frecuencia %>% select(anios, meses, dias,stations_MI$estaciones)
-precipitaciones_MN <- matriz_frecuencia %>% select(anios, meses, dias,stations_MN$estaciones)
-precipitaciones_MO <- matriz_frecuencia %>% select(anios, meses, dias,stations_MO$estaciones)
-precipitaciones_ND <- matriz_frecuencia %>% select(anios, meses, dias,stations_ND$estaciones)
-precipitaciones_NE <- matriz_frecuencia %>% select(anios, meses, dias,stations_NE$estaciones)
-precipitaciones_OH <- matriz_frecuencia %>% select(anios, meses, dias,stations_OH$estaciones)
-precipitaciones_SD <- matriz_frecuencia %>% select(anios, meses, dias,stations_SD$estaciones)
-precipitaciones_WI <- matriz_frecuencia %>% select(anios, meses, dias,stations_WI$estaciones)
-  
-#Agrego una columna que representa el promedio de lluvias de cada dia en las estaciones de un mismo estado
-precipitaciones_IA$promedio <- rowMeans(precipitaciones_IA[startsWith(names(precipitaciones_IA),"US")], na.rm = TRUE)
-precipitaciones_IL$promedio <- rowMeans(precipitaciones_IL[startsWith(names(precipitaciones_IL),"US")], na.rm = TRUE)
-precipitaciones_IN$promedio <- rowMeans(precipitaciones_IN[startsWith(names(precipitaciones_IN),"US")], na.rm = TRUE)
-precipitaciones_KS$promedio <- rowMeans(precipitaciones_KS[startsWith(names(precipitaciones_KS),"US")], na.rm = TRUE)
-precipitaciones_MI$promedio <- rowMeans(precipitaciones_MI[startsWith(names(precipitaciones_MI),"US")], na.rm = TRUE)
-precipitaciones_MN$promedio <- rowMeans(precipitaciones_MN[startsWith(names(precipitaciones_MN),"US")], na.rm = TRUE)
-precipitaciones_MO$promedio <- rowMeans(precipitaciones_MO[startsWith(names(precipitaciones_MO),"US")], na.rm = TRUE)
-precipitaciones_ND$promedio <- rowMeans(precipitaciones_ND[startsWith(names(precipitaciones_ND),"US")], na.rm = TRUE)
-precipitaciones_NE$promedio <- rowMeans(precipitaciones_NE[startsWith(names(precipitaciones_NE),"US")], na.rm = TRUE)
-precipitaciones_OH$promedio <- rowMeans(precipitaciones_OH[startsWith(names(precipitaciones_OH),"US")], na.rm = TRUE)
-precipitaciones_SD$promedio <- rowMeans(precipitaciones_SD[startsWith(names(precipitaciones_SD),"US")], na.rm = TRUE)
-precipitaciones_WI$promedio <- rowMeans(precipitaciones_WI[startsWith(names(precipitaciones_WI),"US")], na.rm = TRUE)
-  
-  
-precipitaciones_por_estado <- as.data.frame(cbind(matriz_frecuencia$anios, matriz_frecuencia$meses, matriz_frecuencia$dias, precipitaciones_IA$promedio,
-                                                  precipitaciones_IL$promedio, precipitaciones_IN$promedio,                                                     
-                                                  precipitaciones_KS$promedio, precipitaciones_MI$promedio,
-                                                  precipitaciones_MN$promedio, precipitaciones_MO$promedio,                                                    
-                                                  precipitaciones_ND$promedio, precipitaciones_NE$promedio,
-                                                  precipitaciones_OH$promedio, precipitaciones_SD$promedio,
-                                                  precipitaciones_WI$promedio))
-  
-colnames(precipitaciones_por_estado) <- c("anios", "meses", "dias", "IA", "IL", "IN", "KS", 
-                                          "MI", "MN", "MO", "ND", "NE", "OH", "SD", "WI")
-  
-  
 #CArgo datos de produccion de maiz en EEUU por estado en 2018
 #https://worldpopulationreview.com/state-rankings/corn-production-by-state
   
