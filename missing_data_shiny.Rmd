@@ -1,0 +1,254 @@
+---
+title: "Precipitaciones y Temperatura Maxima"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+runtime: shiny
+---
+
+Page 1 {data-orientation=columns}
+=====================================     
+
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(lubridate)
+library(plotly)
+library(reshape2)
+
+NA_estado_dia <- read_csv("NA_estado_dia_precipitaciones.csv")
+NA_estado_dia <- melt(NA_estado_dia, id.vars = c("anios", "meses", "dias"))
+
+NA_estado_dia$fecha <- ymd(paste0(NA_estado_dia$anios, "-",NA_estado_dia$meses, "-",NA_estado_dia$dias))
+
+NA_estado_dia_tmax <- read_csv("NA_estado_dia_tmax.csv")
+NA_estado_dia_tmax <- melt(NA_estado_dia_tmax, id.vars = c("anios", "meses", "dias"))
+
+NA_estado_dia_tmax$fecha <- ymd(paste0(NA_estado_dia_tmax$anios, "-",NA_estado_dia_tmax$meses, "-",NA_estado_dia_tmax$dias))
+
+precipitaciones_promedio_diarias <- read_csv("precipitaciones_promedio_diarias_por_estado_boxplot.csv")
+tmax_promedio_diario <- read_csv("tmax_promedio_diaria_por_estado_boxplot.csv")
+precipitaciones_promedio_diarias$fecha <- mdy(precipitaciones_promedio_diarias$fecha)
+tmax_promedio_diario$fecha <- ymd(tmax_promedio_diario$fecha)
+
+
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Parametros
+
+```{r}
+selectInput("variable", label = "Ver NAs de estaciones que registran:",
+            choices = c("Precipitaciones", "Temperatura Maxima"), selected = "Precipitaciones")
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### NAs por dia por Estado (cutoff = 0.99)
+
+```{r}
+output$scatter <- renderPlotly({
+  if(input$variable=="Precipitaciones"){
+  chart <- ggplot(NA_estado_dia, aes(x=fecha, y=value, color=variable)) +
+  geom_line() + 
+  ggtitle("Numero de NAs por dia segun estado") +
+  xlab("Fecha") +
+  ylab("Numero de NAs") + 
+  labs(fill="Estado") 
+
+  build <- plotly_build(ggplotly(chart))
+  build
+} else if (input$variable=="Temperatura Maxima"){
+  chart2 <- ggplot(NA_estado_dia_tmax, aes(x=fecha, y=value, color=variable)) +
+  geom_line() + 
+  ggtitle("Numero de NAs por dia segun estado") +
+  xlab("Fecha") +
+  ylab("Numero de NAs") + 
+  labs(fill="Estado") 
+  build2 <- plotly_build(ggplotly(chart2))
+  build2
+  }
+})
+
+plotlyOutput('scatter', width = "80%")
+```
+
+Page 2 {data-orientation=rows}
+=====================================     
+   
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Parametros
+
+```{r}
+selectInput("variable_climatica", label = "Ver Boxplot de estaciones que registran:",
+            choices = c("Precipitaciones", "Temperatura Maxima"), selected = "Temperatura Maxima")
+
+selectInput("estado", label = "Ver Boxplot de estaciones que registran:",
+            choices = c("IA", "IL","IN","KS","MI","MN","MO","ND","NE","OH","SD","WI"), selected = "IA")
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+
+### Boxplot
+
+```{r}
+output$boxplot <- renderPlotly({
+  if(input$variable_climatica=="Precipitaciones"){
+  chart <- precipitaciones_promedio_diarias %>% filter(variable==input$estado) %>%  ggplot(aes(aes(as.factor(month(fecha))), value)) +
+  geom_boxplot(aes(as.factor(month(fecha)))) +
+  coord_flip() +
+  ggtitle(paste0("Boxplot de precipitaciones diarias promedio para el estado", input$estado)) +
+  xlab("Mes") +
+  ylab("Precipitaciones")
+
+  build <- plotly_build(ggplotly(chart))
+  build
+} else if (input$variable_climatica=="Temperatura Maxima"){
+  chart2 <- tmax_promedio_diario %>% filter(variable==input$estado) %>%  ggplot(aes(aes(as.factor(month(fecha))), value)) +
+  geom_boxplot(aes(as.factor(month(fecha)))) +
+  coord_flip() +
+  ggtitle(paste0("Boxplot de temperatura maxima diaria promedio para el estado", input$estado)) +
+  xlab("Mes") +
+  ylab("Temperatura Maxima")
+    
+  build2 <- plotly_build(ggplotly(chart2))
+  build2
+  }
+})
+
+plotlyOutput('boxplot', width = "80%")
+
+```
+
+Page 3 {data-orientation=rows}
+=====================================     
+   
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Parametros
+
+```{r}
+selectInput("variable_climatica2", label = "Ver Boxplot de estaciones que registran:",
+            choices = c("Precipitaciones", "Temperatura Maxima"), selected = "Temperatura Maxima")
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+
+### Boxplot
+
+```{r}
+output$boxplot2 <- renderPlotly({
+  if(input$variable_climatica2=="Precipitaciones"){
+  grafico_boxplot <- precipitaciones_promedio_diarias %>%  ggplot(aes(variable, value)) +
+  geom_boxplot() +
+  coord_flip() +
+  ggtitle(paste0("Boxplot de precipitaciones diarias promedio entre estados")) +
+  xlab("Estados") +
+  ylab("Precipitaciones")
+
+  build_grafico_boxplot <- plotly_build(ggplotly(grafico_boxplot))
+  build_grafico_boxplot
+} else if (input$variable_climatica2=="Temperatura Maxima"){
+  grafico_boxplot2 <- tmax_promedio_diario  %>%  ggplot(aes(variable, value)) +
+  geom_boxplot() +
+  coord_flip() +
+  ggtitle(paste0("Boxplot de temperatura maxima diaria promedio entre estado")) +
+  xlab("") +
+  ylab("Temperatura Maxima")
+    
+  build_grafico_boxplot2 <- plotly_build(ggplotly(grafico_boxplot2))
+  build_grafico_boxplot2
+  }
+})
+
+plotlyOutput('boxplot2', width = "80%")
+
+```
+
+Page 4 {data-orientation=rows}
+=====================================     
+   
+Column {.sidebar}
+-----------------------------------------------------------------------
+
+Parametros
+
+```{r}
+selectInput("variable_climatica3", label = "Ver Serie de la variable climática:",
+            choices = c("Precipitaciones", "Temperatura Maxima"), selected = "Temperatura Maxima")
+
+selectInput("estado2", label = "Ver Serie para el Estado:",
+            choices = c("IA", "IL","IN","KS","MI","MN","MO","ND","NE","OH","SD","WI"), selected = "IA")
+
+```
+
+Row {}
+-----------------------------------------------------------------------
+### Datos Faltantes
+
+```{r}
+output$serie1 <- renderPlotly({
+  if(input$variable_climatica3=="Precipitaciones"){
+    grafico_serie_NA <- NA_estado_dia %>% filter(variable==input$estado2) %>% ggplot(aes(fecha, value)) + geom_line() +
+      ggtitle(paste0("Serie de datos de ", input$variable_climatica3," faltantes por dia para el estado ", input$estado2)) +
+  xlab("Fecha") +
+  ylab("Numero de NAs")
+  
+  build_serie1 <- plotly_build(ggplotly(grafico_serie_NA))
+  build_serie1
+  } else if(input$variable_climatica3=="Temperatura Maxima"){
+    grafico_serie_NA_2 <- NA_estado_dia_tmax %>% filter(variable==input$estado2) %>% ggplot(aes(fecha, value)) + geom_line() +
+      ggtitle(paste0("Serie de datos de ", input$variable_climatica3," faltantes por dia para el estado ", input$estado2)) +
+  xlab("Fecha") +
+  ylab("Numero de NAs")
+      build_serie2 <- plotly_build(ggplotly(grafico_serie_NA_2))
+  build_serie2
+  }
+})
+
+plotlyOutput('serie1', width = "80%")
+
+```
+
+
+Row {}
+-----------------------------------------------------------------------
+### Precipitaciones/Temperatura Maxima
+
+```{r}
+output$serie3 <- renderPlotly({
+    if(input$variable_climatica3=="Precipitaciones"){
+      grafico_serie_prcp1 <- precipitaciones_promedio_diarias %>% filter(variable==input$estado2) %>% ggplot(aes(fecha, value)) + geom_line() +
+      ggtitle(paste0("Serie de precipitaciones diarias promedio para el estado ", input$estado2)) +
+  xlab("Fecha") +
+  ylab("Precipitaciones")
+  
+  build_serie3 <- plotly_build(ggplotly(grafico_serie_prcp1))
+  build_serie3
+    } else{
+      grafico_serie_tmax <- tmax_promedio_diario %>% filter(variable==input$estado2) %>% ggplot(aes(fecha, value)) + geom_line() +
+      ggtitle(paste0("Serie de tempertura maxima diaria promedio para el estado ", input$estado2)) +
+  xlab("Fecha") +
+  ylab("Temperatura Maxima")
+  
+  build_serie3 <- plotly_build(ggplotly(grafico_serie_tmax))
+  build_serie3
+    }
+})
+
+plotlyOutput('serie3', width = "80%")
+
+```
+
