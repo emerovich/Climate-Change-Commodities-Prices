@@ -119,8 +119,8 @@ initial_year <- 1970
 final_year <- 2019
 cutoff <- 0.99
   
-year_range <- final_year-initial_year
-#year_range <- length(initial_year:final_year)
+#year_range <- final_year-initial_year
+year_range <- length(initial_year:final_year)
 
 lista_archivos <- as.list(list.files(path="C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/GHCN daily weather", pattern="*.csv", full.names=FALSE, recursive=FALSE))
 
@@ -144,7 +144,8 @@ for (i in 1:length(lista_archivos)){
   
 #Me fijo cuantas estaciones me quedan para distintos posibles valores de cutoff
   
-posibles_cutoffs <- seq(0.9, 0.99, 0.01)
+#posibles_cutoffs <- seq(0.9, 0.99, 0.01)
+posibles_cutoffs <- c(0.99)
   
 weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoffs)),
                                                 nro_weather_stations = length(posibles_cutoffs))
@@ -190,7 +191,7 @@ for(i in 1970:2019){
   }
 }
 
-posibles_cutoffs <- seq(0.90, 0.99, 0.01)
+
 weather_station_por_cutoff <- data.frame(cutoff = integer(length(posibles_cutoffs)),
                                          nro_weather_stations = length(posibles_cutoffs))
 
@@ -205,7 +206,7 @@ for(i in seq_along(posibles_cutoffs)){
   weather_station_por_cutoff[i,2] <- contador
 }
 
-write_csv(weather_station_por_cutoff, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/weather_station_por_cutoff_1970_2019.csv")
+#write_csv(weather_station_por_cutoff, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/weather_station_por_cutoff_1970_2019.csv")
 
 
 #Ahora quiero evaluar la distribucion de estados de USA para distintos valores de cutoff
@@ -230,7 +231,7 @@ for(k in seq_along(posibles_cutoffs)){
   distribucion_estados_por_cutoff[,k+1] <- estaciones_df %>% group_by(ST) %>% tally() %>% select(n)
 }
 
-write_csv(distribucion_estados_por_cutoff, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/distribucion_estados_por_cutoff.csv")
+#write_csv(distribucion_estados_por_cutoff, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/distribucion_estados_por_cutoff.csv")
 
 
 #0.91 es el maximo valor de cutoff para el cual hay por lo menos 50 weather stations por estado
@@ -319,9 +320,39 @@ for(k in seq_along(posibles_cutoffs)){
   indice_por_cutoff[,(k+1)] <- precipitaciones_por_estado[,16]
 }
 
+write.csv(indice_por_cutoff, "C:/Users/ezequ/Documents/indice_sanity_check_99.csv")
+
 matriz_correlacion <- cor(indice_por_cutoff[,2:ncol(indice_por_cutoff)])
 #El indice elaborado con un cutoff del 0.90 y el indice elaborado con un cutoff del 0.99 tienen una correlacion del 0.98874
 
+write_csv(indice_por_cutoff,"C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/Outputs/indice_precipitacion_por_cutoff.csv")
+write_csv(as.data.frame(matriz_correlacion),"C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/Outputs/matriz_correlacion_indices_precipitaciones.csv")
+
+
+test <- melt(precipitaciones_por_estado[,1:15], id.vars = c("anios","meses","dias"))
+test$meses <- as.factor(test$meses)
+test$fecha <- ymd(paste0(test$anios, "-",test$meses,"-",test$dias))
+
+test %>% filter(variable=="MO") %>% ggplot(aes(as.factor(month(fecha)), value)) + geom_boxplot(aes(group = cut_width(as.factor(month(fecha)), 0.25))) + coord_flip()
+  geom_jitter(alpha = 0.01)
+
+write_csv(test[,4:6], "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/Outputs/precipitaciones_promedio_diarias_por_estado_boxplot.csv")
+  
+precipitaciones_por_estado %>% filter(MO>1500)
+precipitaciones_ND %>% filter(anios=="1982"&meses=="1"& dias=="26")
+precipitaciones_MO %>% filter(anios=="1982"&meses=="10"& dias=="28")
+
+precipitaciones_por_estado %>% filter(variable=="USC00110072") %>%  ggplot(aes(variable, value)) + geom_boxplot(aes()) +
+  geom_jitter(alpha = 0.01)
+
+fechas_test <- fechas %>% melt(id.vars=c("anios","meses","dias")) %>% 
+  left_join(ghcn_daily_weather_stations[,c(2,6)], by=c("variable"="ID"))
+
+fechas_test$fecha <- ymd(paste0(fechas_test$anios, "-",fechas_test$meses,"-",fechas_test$dias))
+
+fechas_test %>% filter(ST=="IA") %>%  ggplot(aes(as.factor(month(fecha)), value)) + geom_boxplot(aes(group = cut_width(as.factor(month(fecha)), 0.25))) + coord_flip()
+
+left_join(estaciones_df, ghcn_daily_weather_stations[,c(2,6)], by=c("estaciones"="ID"))
 
 
 #CArgo datos de produccion de maiz en EEUU por estado en 2018
@@ -370,7 +401,7 @@ precipitaciones_OH$numero_NA_OH <- rowSums(is.na(precipitaciones_OH))
 precipitaciones_SD$numero_NA_SD <- rowSums(is.na(precipitaciones_SD))
 precipitaciones_WI$numero_NA_WI <- rowSums(is.na(precipitaciones_WI))
 
-NA_estado_dia <- as.data.frame(cbind(precipitaciones_IA[,c(1,2,3)],
+NA_estado_dia_prcp <- as.data.frame(cbind(precipitaciones_IA[,c(1,2,3)],
                                      precipitaciones_IA$numero_NA_IA,
                                      precipitaciones_IN$numero_NA_IN,
                                      precipitaciones_IL$numero_NA_IL,
@@ -387,7 +418,7 @@ NA_estado_dia <- as.data.frame(cbind(precipitaciones_IA[,c(1,2,3)],
 
 colnames(NA_estado_dia) <- c("anios", "meses", "dias", "IA", "IN","IL","KS","MI","MN","MO","ND","NE",
                              "OH","SD","WI")
-write_csv(NA_estado_dia, "C:/Users/ezequ/Documents/NA_estado_dia.csv")
+write_csv(NA_estado_dia, "C:/Users/ezequ/Dropbox/Paper Climate Change & Commodity Price Dynamics/Datos/Outputs/NA_estado_dia_precipitaciones.csv")
 NA_estado_dia_por_mes <- NA_estado_dia %>% group_by(anios,meses,dias) %>% 
   summarise_at(c("IA", "IN","IL","KS","MI","MN","MO","ND","NE",
                  "OH","SD","WI"),sum, na.rm=TRUE)
